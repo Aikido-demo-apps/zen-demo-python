@@ -1,5 +1,7 @@
 import os
 
+from aikido_zen import set_user
+from aikido_zen.middleware import AikidoFlaskMiddleware
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import init_database, DatabaseHelper
 from flaskr.helpers import Helpers
@@ -14,6 +16,10 @@ def create_app(test_config=None):
         static_folder="resources",
         template_folder="resources",
     )
+
+    # Add zen middleware
+    app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)
+
     # app.config.from_mapping(
     #     SECRET_KEY='dev',
     #     DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
@@ -67,7 +73,9 @@ def create_app(test_config=None):
 
     @app.route('/test_user_blocking')
     def test_user_blocking():
-        return "Hello User with id: %s" % (request.headers.get('user'))
+        id = request.headers.get('user')
+        set_user({"id": id, "name": get_name(id)})
+        return "Hello User with id: %s" % (id)
 
     class CreateRequest:
         def __init__(self, data):
@@ -141,3 +149,19 @@ def create_app(test_config=None):
         return send_from_directory('resources/public', path)
 
     return app
+
+def get_name(number):
+    names = [
+        "Hans",
+        "Samuel",
+        "Timo",
+        "Tudor",
+        "Willem",
+        "Wout",
+        "Yannis",
+    ]
+
+    # Use absolute value to handle negative numbers
+    # Use modulo to wrap around the list
+    index = abs(number) % len(names)
+    return names[index]

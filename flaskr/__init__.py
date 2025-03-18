@@ -17,9 +17,6 @@ def create_app(test_config=None):
         template_folder="resources",
     )
 
-    # Add zen middleware
-    app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)
-
     # app.config.from_mapping(
     #     SECRET_KEY='dev',
     #     DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
@@ -147,6 +144,9 @@ def create_app(test_config=None):
         print(path)
         # Using request args for path will expose you to directory traversal attacks
         return send_from_directory('resources/public', path)
+
+    # Add zen middleware
+    app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)
 
     return app
 

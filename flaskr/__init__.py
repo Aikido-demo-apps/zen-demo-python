@@ -73,7 +73,7 @@ def create_app(test_config=None):
 
     @app.route('/test_user_blocking')
     def test_user_blocking():
-        id = request.headers.get('user')
+        id = int(request.headers.get('user'))
         set_user({"id": id, "name": get_name(id)})
         return "Hello User with id: %s" % (id)
 

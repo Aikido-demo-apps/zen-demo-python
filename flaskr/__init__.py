@@ -3,6 +3,8 @@ import os
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import init_database, DatabaseHelper
 from flaskr.helpers import Helpers
+import aikido_zen
+aikido_zen.protect()
 
 def create_app(test_config=None):
     # create and configure the app

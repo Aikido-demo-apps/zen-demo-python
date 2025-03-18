@@ -1,0 +1,3 @@
+[submodule "flaskr/resources"]
+	path = flaskr/resources
+	url = git@github.com:Aikido-demo-apps/zen-demo-ui.git

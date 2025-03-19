@@ -6,6 +6,9 @@ from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import init_database, DatabaseHelper
 from flaskr.helpers import Helpers
 import aikido_zen
+
+from flaskr.user_middleware import UserMiddleware
+
 aikido_zen.protect()
 
 def create_app(test_config=None):
@@ -16,6 +19,12 @@ def create_app(test_config=None):
         static_folder="resources",
         template_folder="resources",
     )
+
+    # Add zen middleware
+    app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)
+
+    # Add user middleware
+    app.wsgi_app = UserMiddleware(app.wsgi_app)
 
     # app.config.from_mapping(
     #     SECRET_KEY='dev',
@@ -70,9 +79,7 @@ def create_app(test_config=None):
 
     @app.route('/test_user_blocking')
     def test_user_blocking():
-        id = int(request.headers.get('user'))
-        set_user({"id": id, "name": get_name(id)})
-        return "Hello User with id: %s" % (id)
+        return "Hello User with id: %s" % (request.headers.get('user'))
 
     class CreateRequest:
         def __init__(self, data):
@@ -145,23 +152,4 @@ def create_app(test_config=None):
         # Using request args for path will expose you to directory traversal attacks
         return send_from_directory('resources/public', path)
 
-    # Add zen middleware
-    app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)
-
     return app
-
-def get_name(number):
-    names = [
-        "Hans",
-        "Samuel",
-        "Timo",
-        "Tudor",
-        "Willem",
-        "Wout",
-        "Yannis",
-    ]
-
-    # Use absolute value to handle negative numbers
-    # Use modulo to wrap around the list
-    index = abs(number) % len(names)
-    return names[index]

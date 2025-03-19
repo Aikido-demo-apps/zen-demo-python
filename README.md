@@ -7,3 +7,7 @@
 `. .venv/bin/activate`
 
 `pip install -r requirements.txt`
+
+## run
+
+`AIKIDO_BLOCK=1 flask --app flaskr run --debug`

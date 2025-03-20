@@ -111,7 +111,12 @@ class DatabaseHelper:
                     cur.execute("SELECT * FROM pets WHERE pet_id = %s", (id,))
                     row = cur.fetchone()
                     if row:
-                        return Pet(row[0], row[1], row[2])
+                        id, name, owner = row
+                        return {
+                            'pet_id': id,
+                            'name': name,
+                            'owner': owner,
+                        }
         except Exception as e:
             print(f"Database error occurred: {e}")
 
@@ -127,12 +132,8 @@ class DatabaseHelper:
         try:
             with DatabaseHelper.get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # Using parameterized query to prevent SQL injection
-                    cur.execute(
-                        "INSERT INTO pets (pet_name, owner) VALUES (%s, %s)",
-                        (pet_name, 'Aikido Security')
-                    )
-                    conn.commit()
+                    query = f"INSERT INTO pets (pet_name, owner) VALUES ('{pet_name}', 'Aikido Security')"
+                    cur.execute(query)
                     return cur.rowcount
         except Exception as e:
             print(f"Database error occurred: {e}")

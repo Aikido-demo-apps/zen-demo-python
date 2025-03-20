@@ -11,3 +11,6 @@
 ## run
 
 `AIKIDO_BLOCK=1 flask --app flaskr run --debug`
+
+Test with database
+`DATABASE_URL=postgres://username:passowrd@localhost:5432/aikido?sslmode=disable`

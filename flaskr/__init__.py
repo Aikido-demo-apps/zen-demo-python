@@ -6,9 +6,9 @@ from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import init_database, DatabaseHelper
 from flaskr.helpers import Helpers
 import aikido_zen
-
 from flaskr.user_middleware import UserMiddleware
 
+# Enable Zen
 aikido_zen.protect()
 
 def create_app(test_config=None):
@@ -20,29 +20,14 @@ def create_app(test_config=None):
         template_folder="resources",
     )
 
+    # Initiate database
+    init_database(app)
+
     # Add zen middleware
     app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)
 
     # Add user middleware
     app.wsgi_app = UserMiddleware(app.wsgi_app)
-
-    # app.config.from_mapping(
-    #     SECRET_KEY='dev',
-    #     DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
-    # )
-    #
-    # if test_config is None:
-    #     # load the instance config, if it exists, when not testing
-    #     app.config.from_pyfile('config.py', silent=True)
-    # else:
-    #     # load the test config if passed in
-    #     app.config.from_mapping(test_config)
-    #
-    # # ensure the instance folder exists
-    # try:
-    #     os.makedirs(app.instance_path)
-    # except OSError:
-    #     pass
 
     # Routes
     @app.route('/', methods=['GET'])
@@ -98,9 +83,10 @@ def create_app(test_config=None):
         DatabaseHelper.clear_all()
         return "Cleared successfully."
 
-    @app.route('/api/pets', methods=['GET'])
+    @app.route('/api/pets/', methods=['GET'])
     def get_pets():
         pets = DatabaseHelper.get_all_pets()
+        print(pets)
         return jsonify(pets)
 
     @app.route('/api/create', methods=['POST'])
@@ -148,7 +134,6 @@ def create_app(test_config=None):
     # Static files
     @app.route('/<path:path>', methods=['GET'])
     def send_report(path):
-        print(path)
         # Using request args for path will expose you to directory traversal attacks
         return send_from_directory('resources/public', path)
 

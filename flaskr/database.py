@@ -5,12 +5,6 @@ from psycopg2.pool import SimpleConnectionPool
 from contextlib import contextmanager
 from flask import current_app
 
-class Pet:
-    def __init__(self, id, name, owner):
-        self.id = id
-        self.name = name
-        self.owner = owner
-
 class DatabaseHelper:
     # Regex pattern for input validation
     REGEX = r'^[A-Za-z0-9 ,-.]+$'
@@ -36,6 +30,21 @@ class DatabaseHelper:
             password=url.password,
             sslmode='disable'
         )
+
+        # Create table
+        with pool.getconn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS public.pets
+                    (
+                    pet_id integer NOT NULL GENERATED ALWAYS AS IDENTITY (START 1 INCREMENT 1 ),
+                    pet_name character varying(255) NOT NULL,
+                    owner character varying(255) NOT NULL,
+                    CONSTRAINT pet_pkey PRIMARY KEY (pet_id)
+                    )
+                """)
+                conn.commit()
+
         return pool
 
     @staticmethod
@@ -65,7 +74,6 @@ class DatabaseHelper:
                     print(f"{rows_affected} pets have been removed from the database.")
         except Exception as e:
             print(f"Database error occurred: {e}")
-            conn.rollback()
 
     @staticmethod
     def get_all_pets():
@@ -84,9 +92,14 @@ class DatabaseHelper:
                         if not DatabaseHelper.is_valid_input(owner):
                             owner = "[REDACTED: XSS RISK]"
 
-                        pets.append(Pet(id, name, owner))
+                        pets.append({
+                            'pet_id': id,
+                            'name': name,
+                            'owner': owner,
+                        })
         except Exception as e:
             print(f"Database error occurred: {e}")
+
         return pets
 
     @staticmethod
@@ -101,7 +114,12 @@ class DatabaseHelper:
                         return Pet(row[0], row[1], row[2])
         except Exception as e:
             print(f"Database error occurred: {e}")
-        return Pet(0, "Unknown", "Unknown")
+
+        return {
+            'pet_id': "-1",
+            'name': "unknown",
+            'owner': "the void",
+        }
 
     @staticmethod
     def create_pet_by_name(pet_name):
@@ -118,17 +136,9 @@ class DatabaseHelper:
                     return cur.rowcount
         except Exception as e:
             print(f"Database error occurred: {e}")
-            conn.rollback()
         return -1
 
 # Flask application setup
 def init_database(app):
     """Initialize the Flask application with database pool"""
     app.config['db_pool'] = DatabaseHelper.create_db_pool()
-
-    @app.teardown_appcontext
-    def close_db_pool(exception):
-        """Close the database pool when the application context ends"""
-        db_pool = app.config.get('db_pool')
-        if db_pool:
-            db_pool.closeall()

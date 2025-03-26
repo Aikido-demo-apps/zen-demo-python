@@ -1,4 +1,4 @@
 Flask
 psycopg2-binary
 requests
-aikido_zen
+aikido_zen==1.1.6b0

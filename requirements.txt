@@ -1,4 +1,5 @@
 Flask
 psycopg2-binary
 requests
+gunicorn
 aikido_zen==1.1.6b2

@@ -13,4 +13,4 @@ WORKDIR /app
 COPY --from=builder /app/.venv .venv/
 COPY . .
 ENV AIKIDO_BLOCK="1"
-CMD ["/app/.venv/bin/flask", "--app=flaskr", "run", "--host=0.0.0.0", "--port=8080"]
+CMD ["/app/.venv/bin/gunicorn", "--bind=0.0.0.0:8080", "wsgi:app"]

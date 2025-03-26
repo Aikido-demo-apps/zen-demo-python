@@ -13,6 +13,13 @@ class UserMiddleware():
         if user:
             id = int(request.headers.get('user'))
             set_user({"id": id, "name": self.get_name(id)})
+        else:
+            # Check for X-User-ID and X-User-Name headers
+            user_id = request.headers.get('X-User-ID')
+            user_name = request.headers.get('X-User-Name')
+            if user_id and user_name:
+                id = int(user_id)
+                set_user({"id": id, "name": user_name})
 
         return self.app(environ, start_response)
 

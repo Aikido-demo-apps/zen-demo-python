@@ -2,3 +2,4 @@ Flask
 psycopg2-binary
 requests
 aikido_zen
+gunicorn

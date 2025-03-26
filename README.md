@@ -14,3 +14,6 @@
 
 Test with database
 `DATABASE_URL=postgres://username:passowrd@localhost:5432/aikido?sslmode=disable`
+
+Production test
+`./.venv/bin/gunicorn --bind=0.0.0.0:8080 wsgi:app`

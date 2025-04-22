@@ -1,0 +1,15 @@
+# fly.toml app configuration file generated for zen-demo-python on 2025-03-18T20:32:42+01:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'zen-demo-python-danger'
+primary_region = 'ams'
+
+[[vm]]
+  cpus = 1
+  memory = '512mb'
+  cpu_kind = 'shared'
+
+[env]
+AIKIDO_DISABLE = 'true'

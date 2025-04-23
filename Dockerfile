@@ -13,4 +13,4 @@ WORKDIR /app
 COPY --from=builder /app/.venv .venv/
 COPY . .
 ENV AIKIDO_BLOCK="1"
-CMD ["/app/.venv/bin/gunicorn", "--bind=0.0.0.0:8080", "wsgi:app"]
+CMD ["/app/.venv/bin/gunicorn", "--bind=[::]:8080", "wsgi:app"]

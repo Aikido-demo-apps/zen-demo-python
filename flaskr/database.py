@@ -134,6 +134,7 @@ class DatabaseHelper:
                 with conn.cursor() as cur:
                     query = f"INSERT INTO pets (pet_name, owner) VALUES ('{pet_name}', 'Aikido Security')"
                     cur.execute(query)
+                    conn.commit()
                     return cur.rowcount
         except Exception as e:
             print(f"Database error occurred: {e}")

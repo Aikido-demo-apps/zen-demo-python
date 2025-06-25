@@ -86,7 +86,6 @@ def create_app(test_config=None):
     @app.route('/api/pets/', methods=['GET'])
     def get_pets():
         pets = DatabaseHelper.get_all_pets()
-        print(pets)
         return jsonify(pets)
 
     @app.route('/api/create', methods=['POST'])

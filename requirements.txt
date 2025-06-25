@@ -2,4 +2,4 @@ Flask
 psycopg2-binary
 requests
 gunicorn
-aikido_zen==1.2.5
+aikido_zen==1.2.6

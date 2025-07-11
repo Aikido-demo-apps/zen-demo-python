@@ -129,16 +129,12 @@ class DatabaseHelper:
     @staticmethod
     def create_pet_by_name(pet_name):
         """Create a new pet"""
-        try:
-            with DatabaseHelper.get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    query = f"INSERT INTO pets (pet_name, owner) VALUES ('{pet_name}', 'Aikido Security')"
-                    cur.execute(query)
-                    conn.commit()
-                    return cur.rowcount
-        except Exception as e:
-            print(f"Database error occurred: {e}")
-        return -1
+        with DatabaseHelper.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                query = f"INSERT INTO pets (pet_name, owner) VALUES ('{pet_name}', 'Aikido Security')"
+                cur.execute(query)
+                conn.commit()
+                return cur.rowcount
 
 # Flask application setup
 def init_database(app):

@@ -92,10 +92,7 @@ def create_app(test_config=None):
     def create_pet():
         data = request.get_json()
         create_request = CreateRequest(data)
-        rows_created = DatabaseHelper.create_pet_by_name(create_request.name)
-
-        if rows_created == -1:
-            return "Database error occurred"
+        DatabaseHelper.create_pet_by_name(create_request.name)
         return "Success!"
 
     @app.route('/api/execute', methods=['POST'])

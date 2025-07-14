@@ -26,8 +26,6 @@ class Helpers:
         except AikidoSSRF as e:
             return f"Error: {str(e)}", 500
         except Exception as e:
-            if "Failed to resolve" in str(e):
-                return f"Error: {str(e)}", 500
             return f"Error: {str(e)}", 400
 
 

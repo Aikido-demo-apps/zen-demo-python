@@ -1,6 +1,7 @@
 import subprocess
 import requests
 from pathlib import Path
+from aikido_zen.errors import AikidoSSRF
 
 class Helpers:
     @staticmethod
@@ -19,8 +20,16 @@ class Helpers:
     @staticmethod
     def make_http_request(url_string):
         """Make a HTTP GET request using requests library"""
-        response = requests.get(url_string)
-        return response.text
+        try:
+            response = requests.get(url_string, timeout=10)
+            return response.text, response.status_code
+        except AikidoSSRF as e:
+            return f"Error: {str(e)}", 500
+        except Exception as e:
+            if "Failed to resolve" in str(e):
+                return f"Error: {str(e)}", 500
+            return f"Error: {str(e)}", 400
+
 
     @staticmethod
     def read_file(file_path):

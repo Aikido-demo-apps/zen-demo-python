@@ -1,7 +1,7 @@
 import subprocess
 import requests
 from pathlib import Path
-from aikido_zen.errors import AikidoSSRF
+from aikido_zen.errors import AikidoSSRF, AikidoPathTraversal
 
 class Helpers:
     @staticmethod
@@ -35,5 +35,12 @@ class Helpers:
     def read_file(file_path):
         """Read content from a file"""
         full_path = Path("flaskr/resources/blogs/") / file_path
-        with open(full_path, 'r') as file:
-            return file.read()
+        try:
+            with open(full_path, 'r') as file:
+                return file.read()
+        except AikidoPathTraversal as e:
+            return f"Error: {str(e)}", 500
+        except Exception as e:
+            if "No such file or directory" in str(e) or "Is a directory:" in str(e) or "embedded null byte" in str(e):
+                return f"Error: {str(e)}", 500
+            return f"Error: {str(e)}", 400

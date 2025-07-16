@@ -6,9 +6,6 @@ from contextlib import contextmanager
 from flask import current_app
 
 class DatabaseHelper:
-    # Regex pattern for input validation
-    REGEX = r'^[A-Za-z0-9 ,-.]+$'
-
     @staticmethod
     def create_db_pool():
         """Create and return database connection pool"""
@@ -58,11 +55,6 @@ class DatabaseHelper:
             current_app.config['db_pool'].putconn(conn)
 
     @staticmethod
-    def is_valid_input(input_str):
-        """Validate input string against regex pattern"""
-        return bool(re.match(DatabaseHelper.REGEX, input_str))
-
-    @staticmethod
     def clear_all():
         """Clear all pets from the database"""
         try:
@@ -85,12 +77,6 @@ class DatabaseHelper:
                     cur.execute("SELECT * FROM pets")
                     for row in cur.fetchall():
                         id, name, owner = row
-
-                        # Validate input for XSS risks
-                        if not DatabaseHelper.is_valid_input(name):
-                            name = "[REDACTED: XSS RISK]"
-                        if not DatabaseHelper.is_valid_input(owner):
-                            owner = "[REDACTED: XSS RISK]"
 
                         pets.append({
                             'pet_id': str(id),

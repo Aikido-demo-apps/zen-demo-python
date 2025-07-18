@@ -6,6 +6,8 @@ from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import init_database, DatabaseHelper
 from flaskr.helpers import Helpers
 import aikido_zen
+
+from flaskr.test_llm import test_llm
 from flaskr.user_middleware import UserMiddleware
 
 # Enable Zen
@@ -126,6 +128,10 @@ def create_app(test_config=None):
         file_path = request.args.get('path')
         content = Helpers.read_file(file_path)
         return content
+
+    @app.route('/test_llm', methods=['POST'])
+    def test_llm_route():
+        return test_llm()
 
     # Static files
     @app.route('/<path:path>', methods=['GET'])

@@ -93,9 +93,9 @@ class DatabaseHelper:
                             owner = "[REDACTED: XSS RISK]"
 
                         pets.append({
-                            'pet_id': id,
-                            'name': name,
-                            'owner': owner,
+                            'pet_id': str(id),
+                            'name': str(name),
+                            'owner': str(owner),
                         })
         except Exception as e:
             print(f"Database error occurred: {e}")
@@ -113,9 +113,9 @@ class DatabaseHelper:
                     if row:
                         id, name, owner = row
                         return {
-                            'pet_id': id,
-                            'name': name,
-                            'owner': owner,
+                            'pet_id': str(id),
+                            'name': str(name),
+                            'owner': str(owner),
                         }
         except Exception as e:
             print(f"Database error occurred: {e}")

@@ -7,4 +7,4 @@ anthropic
 mistralai
 aikido_zen==1.2.12
 memray
-
+newrelic

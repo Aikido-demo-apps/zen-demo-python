@@ -2,4 +2,7 @@ Flask
 psycopg2-binary
 requests
 gunicorn
-aikido_zen==1.2.10
+openai
+anthropic
+mistralai
+aikido_zen==1.2.12

@@ -3,7 +3,7 @@ import os
 from aikido_zen import set_user
 from aikido_zen.middleware import AikidoFlaskMiddleware
 from flask import Flask, render_template, send_from_directory, request, jsonify
-from flaskr.database import init_database, DatabaseHelper
+from flaskr.database import DatabaseHelper
 from flaskr.helpers import Helpers
 import aikido_zen
 
@@ -21,9 +21,6 @@ def create_app(test_config=None):
         static_folder="resources",
         template_folder="resources",
     )
-
-    # Initiate database
-    init_database(app)
 
     # Add zen middleware
     app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)

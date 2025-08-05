@@ -25,3 +25,11 @@ Test with database
 
 Production test
 `./.venv/bin/gunicorn --bind=0.0.0.0:8080 wsgi:app`
+
+## debugging
+
+`fly ssh`
+
+`ps aux` get process ID (left most numbers)
+
+`.venv/bin/memray attach --native --trace-python-allocators -v {id}`

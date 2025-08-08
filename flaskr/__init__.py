@@ -119,6 +119,16 @@ def create_app(test_config=None):
         request_data = RequestRequest(data)
         response = Helpers.make_http_request(request_data.url)  # Using same method as request1 since we don't need OkHttp
         return response
+   
+   @app.route('/api/request_different_port', methods=['POST'])
+    def make_request_different_port():
+        data = request.get_json()
+        request_data = RequestRequest(data)
+        url = request_data.url
+        port = request_data.port
+        new_url = re.sub(r':\d+', f':{port}', url)
+        response = Helpers.make_http_request(new_url)
+        return response
 
     @app.route('/api/read', methods=['GET'])
     def read_file():

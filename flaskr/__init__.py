@@ -6,12 +6,13 @@ from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import DatabaseHelper
 from flaskr.helpers import Helpers
 import aikido_zen
-
+import re
 from flaskr.test_llm import test_llm
 from flaskr.user_middleware import UserMiddleware
 
 # Enable Zen
 aikido_zen.protect()
+
 
 def create_app(test_config=None):
     # create and configure the app
@@ -117,10 +118,11 @@ def create_app(test_config=None):
     def make_request2():
         data = request.get_json()
         request_data = RequestRequest(data)
-        response = Helpers.make_http_request(request_data.url)  # Using same method as request1 since we don't need OkHttp
+        # Using same method as request1 since we don't need OkHttp
+        response = Helpers.make_http_request(request_data.url)
         return response
-   
-   @app.route('/api/request_different_port', methods=['POST'])
+
+    @app.route('/api/request_different_port', methods=['POST'])
     def make_request_different_port():
         data = request.get_json()
         request_data = RequestRequest(data)

@@ -77,6 +77,7 @@ def create_app(test_config=None):
     class RequestRequest:
         def __init__(self, data):
             self.url = data.get('url')
+            self.port = data.get('port', None)
 
     @app.route('/clear', methods=['GET'])
     def clear():

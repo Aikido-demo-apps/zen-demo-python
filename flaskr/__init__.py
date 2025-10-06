@@ -80,6 +80,11 @@ def create_app(test_config=None):
         def __init__(self, data):
             self.url = data.get('url')
 
+    class RequestDifferentPortRequest:
+        def __init__(self, data):
+            self.url = data.get('url')
+            self.port = data.get('port')
+
     @app.route('/clear', methods=['GET'])
     def clear():
         DatabaseHelper.clear_all()
@@ -89,6 +94,13 @@ def create_app(test_config=None):
     def get_pets():
         pets = DatabaseHelper.get_all_pets()
         return jsonify(pets)
+
+    @app.route('/api/pets/<id>', methods=['GET'])
+    def get_pet_by_id(id):
+        pet = DatabaseHelper.get_pet_by_id(id)
+        if pet:
+            return jsonify(pet)
+        return jsonify({"error": "Pet not found"}), 404
 
     @app.route('/api/create', methods=['POST'])
     def create_pet():
@@ -121,6 +133,13 @@ def create_app(test_config=None):
         data = request.get_json()
         request_data = RequestRequest(data)
         response = Helpers.make_http_request(request_data.url)  # Using same method as request1 since we don't need OkHttp
+        return response
+
+    @app.route('/api/request_different_port', methods=['POST'])
+    def make_request_different_port():
+        data = request.get_json()
+        request_data = RequestDifferentPortRequest(data)
+        response = Helpers.make_http_request_different_port(request_data.url, request_data.port)
         return response
 
     @app.route('/api/read', methods=['GET'])

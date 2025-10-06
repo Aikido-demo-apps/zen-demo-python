@@ -148,12 +148,6 @@ def create_app(test_config=None):
         content = Helpers.read_file(file_path)
         return content
 
-    @app.route('/api/read2', methods=['GET'])
-    def read_file2():
-        file_path = request.args.get('path')
-        content = Helpers.read_file2(file_path)
-        return content
-
     @app.route('/test_llm', methods=['POST'])
     def test_llm_route():
         return test_llm()

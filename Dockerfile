@@ -4,10 +4,18 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 
-
 RUN python -m venv .venv
+
 COPY requirements.txt ./
-RUN .venv/bin/pip install -r requirements.txt
+
+# Copy the dev firewall package
+COPY aikido_zen-*.whl ./
+
+# === THIS SECTION IS MODIFIED FOR QA STEP ===
+RUN .venv/bin/pip install -r requirements.txt && \
+    .venv/bin/pip uninstall -y aikido-zen && \
+    .venv/bin/pip install ./aikido_zen-*.whl
+# === END OF MODIFIED SECTION ===
 
 FROM python:3.13.2-slim
 WORKDIR /app

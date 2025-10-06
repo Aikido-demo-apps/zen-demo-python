@@ -89,6 +89,27 @@ class DatabaseHelper:
         return pets
 
     @staticmethod
+    def get_pet_by_id(pet_id):
+        """Get a specific pet by ID"""
+        try:
+            with DatabaseHelper.get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    query = f"SELECT * FROM pets WHERE pet_id = '{pet_id}'"
+                    cur.execute(query)
+                    row = cur.fetchone()
+                    if row:
+                        id, name, owner = row
+                        return {
+                            'pet_id': str(id),
+                            'name': str(name),
+                            'owner': str(owner),
+                        }
+                    return None
+        except Exception as e:
+            print(f"Database error occurred: {e}")
+            return None
+
+    @staticmethod
     def create_pet_by_name(pet_name):
         """Create a new pet"""
         with DatabaseHelper.get_db_connection() as conn:

@@ -6,6 +6,19 @@ from contextlib import contextmanager
 from flask import current_app
 
 class DatabaseHelper:
+
+    # Class variable to store the database pool (lazy initialization)
+    _db_pool = None
+    _pool_initialized = False
+
+    @staticmethod
+    def _get_db_pool():
+        """Get or create the database connection pool (lazy initialization)"""
+        if not DatabaseHelper._pool_initialized:
+            DatabaseHelper._db_pool = DatabaseHelper.create_db_pool()
+            DatabaseHelper._pool_initialized = True
+        return DatabaseHelper._db_pool
+
     @staticmethod
     def create_db_pool():
         """Create and return database connection pool"""
@@ -48,11 +61,12 @@ class DatabaseHelper:
     @contextmanager
     def get_db_connection():
         """Context manager for database connections"""
-        conn = current_app.config['db_pool'].getconn()
+        pool = DatabaseHelper._get_db_pool()
+        conn = pool.getconn()
         try:
             yield conn
         finally:
-            current_app.config['db_pool'].putconn(conn)
+            pool.putconn(conn)
 
     @staticmethod
     def clear_all():
@@ -118,8 +132,3 @@ class DatabaseHelper:
                 cur.execute(query)
                 conn.commit()
                 return cur.rowcount
-
-# Flask application setup
-def init_database(app):
-    """Initialize the Flask application with database pool"""
-    app.config['db_pool'] = DatabaseHelper.create_db_pool()

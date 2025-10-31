@@ -7,9 +7,9 @@ app = 'zen-demo-python-danger'
 primary_region = 'ams'
 
 [[vm]]
+  memory = '1024mb'
+  cpu_kind = 'performance'
   cpus = 1
-  memory = '512mb'
-  cpu_kind = 'shared'
 
 [env]
 AIKIDO_DISABLE = 'true'

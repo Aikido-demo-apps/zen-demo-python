@@ -7,7 +7,7 @@ app = 'zen-demo-python-danger'
 primary_region = 'ams'
 
 [[vm]]
-  memory = '1024mb'
+  memory = '2048mb'
   cpu_kind = 'performance'
   cpus = 1
 

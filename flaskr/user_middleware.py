@@ -1,4 +1,4 @@
-from aikido_zen import set_user
+from aikido_zen import set_user, set_rate_limit_group
 from werkzeug.wrappers import Request, Response, ResponseStream
 
 class UserMiddleware():
@@ -8,6 +8,11 @@ class UserMiddleware():
 
     def __call__(self, environ, start_response):
         request = Request(environ)
+
+        # --- Rate Limiting Group Logic ---
+        rate_limiting_group_id = request.cookies.get('RateLimitingGroupID')
+        if rate_limiting_group_id:
+            set_rate_limit_group(rate_limiting_group_id)
 
         user = request.headers.get('user')
         if user:

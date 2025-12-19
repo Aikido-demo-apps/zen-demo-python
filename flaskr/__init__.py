@@ -81,6 +81,10 @@ def create_app(test_config=None):
         def __init__(self, data):
             self.url = data.get('url')
             self.port = data.get('port')
+   
+    class RequestStoredSsrfRequest:
+        def __init__(self, data):
+            self.url_index = data.get('urlIndex')
 
     @app.route('/clear', methods=['GET'])
     def clear():
@@ -142,7 +146,19 @@ def create_app(test_config=None):
 
     @app.route('/api/stored_ssrf', methods=['POST'])
     def make_stored_ssrf():
-        url = f"http://evil-stored-ssrf-hostname/latest/api/token"
+        data = request.get_json()
+        request_data = RequestStoredSsrfRequest(data)
+        if request_data.url_index is None:
+            url_index = 0
+        else:
+            url_index = request_data.url_index
+        urls = [
+            'http://evil-stored-ssrf-hostname/latest/api/token',
+            'http://metadata.google.internal/latest/api/token',
+            'http://metadata.goog/latest/api/token',
+            'http://169.254.169.254/latest/api/token',
+        ]
+        url = urls[url_index % urls.length]
         response = Helpers.make_http_request(url)
         return response
 

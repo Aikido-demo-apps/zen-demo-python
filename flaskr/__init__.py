@@ -157,6 +157,9 @@ def create_app(test_config=None):
             'http://metadata.google.internal/latest/api/token',
             'http://metadata.goog/latest/api/token',
             'http://169.254.169.254/latest/api/token',
+            'http://evil-stored-ssrf-hostname./latest/api/token',
+            'http://metadata.google.internal./latest/api/token',
+            'http://metadata.goog./latest/api/token',
         ]
         url = urls[url_index % len(urls)]
         response = Helpers.make_http_request(url)

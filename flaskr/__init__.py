@@ -6,10 +6,10 @@ from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import DatabaseHelper
 from flaskr.helpers import Helpers
 import aikido_zen
-
+import threading
 from flaskr.test_llm import test_llm
 from flaskr.user_middleware import UserMiddleware
-
+import time
 # Enable Zen
 aikido_zen.protect()
 
@@ -81,6 +81,10 @@ def create_app(test_config=None):
         def __init__(self, data):
             self.url = data.get('url')
             self.port = data.get('port')
+   
+    class RequestStoredSsrfRequest:
+        def __init__(self, data):
+            self.url_index = data.get('urlIndex')
 
     @app.route('/clear', methods=['GET'])
     def clear():
@@ -136,8 +140,38 @@ def create_app(test_config=None):
     def make_request_different_port():
         data = request.get_json()
         request_data = RequestDifferentPortRequest(data)
-        response = Helpers.make_http_request_different_port(request_data.url, request_data.port)
+        response = Helpers.make_http_request_different_port(
+            request_data.url, request_data.port)
         return response
+
+    @app.route('/api/stored_ssrf', methods=['POST'])
+    def make_stored_ssrf():
+        data = request.get_json()
+        request_data = RequestStoredSsrfRequest(data)
+        if request_data.url_index is None:
+            url_index = 0
+        else:
+            url_index = request_data.url_index
+        urls = [
+            'http://evil-stored-ssrf-hostname/latest/api/token',
+            'http://metadata.google.internal/latest/api/token',
+            'http://metadata.goog/latest/api/token',
+            'http://169.254.169.254/latest/api/token',
+        ]
+        url = urls[url_index % urls.length]
+        response = Helpers.make_http_request(url)
+        return response
+
+    @app.route('/api/stored_ssrf_2', methods=['POST'])
+    def make_stored_ssrf_2():
+       
+        def ssrf():
+            time.sleep(10)
+            Helpers.make_http_request("http://evil-stored-ssrf-hostname/latest/api/token")
+        
+        thread = threading.Thread(target=ssrf)
+        thread.start()
+        return "Request successful (Stored SSRF 2 no context)"
 
     @app.route('/api/read', methods=['GET'])
     def read_file():

@@ -110,6 +110,14 @@ def create_app(test_config=None):
         DatabaseHelper.create_pet_by_name(create_request.name)
         return "Success!"
 
+    @app.route('/api/create-form', methods=['POST'])
+    def create_pet_form():
+        name = request.form.get('name')
+        if not name:
+            return "Invalid request", 400
+        DatabaseHelper.create_pet_by_name(name)
+        return "Success!"
+
     @app.route('/api/execute', methods=['POST'])
     def execute_command_post():
         data = request.get_json()

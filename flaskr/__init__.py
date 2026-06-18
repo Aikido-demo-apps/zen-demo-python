@@ -1,4 +1,5 @@
 import os
+from functools import wraps
 
 from aikido_zen import set_user
 from aikido_zen.middleware import AikidoFlaskMiddleware
@@ -13,6 +14,27 @@ from flaskr.user_middleware import UserMiddleware
 # Enable Zen
 aikido_zen.protect()
 
+
+def require_authentication(f):
+    """Decorator to require authentication for sensitive endpoints"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check for user authentication via headers
+        user_id = request.headers.get('user') or request.headers.get('X-User-ID')
+        user_name = request.headers.get('X-User-Name')
+        
+        # Require both user ID and name for authenticated access
+        if not user_id or not user_name:
+            return jsonify({"error": "Authentication required. Please provide valid user credentials."}), 401
+        
+        # Validate user_id is numeric
+        try:
+            int(user_id)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid user credentials."}), 401
+            
+        return f(*args, **kwargs)
+    return decorated_function
 
 def create_app(test_config=None):
     # create and configure the app
@@ -97,6 +119,7 @@ def create_app(test_config=None):
         return "Success!"
 
     @app.route('/api/execute', methods=['POST'])
+    @require_authentication
     def execute_command_post():
         data = request.get_json()
         command_request = CommandRequest(data)
@@ -104,6 +127,7 @@ def create_app(test_config=None):
         return result
 
     @app.route('/api/execute/<command>', methods=['GET'])
+    @require_authentication
     def execute_command_get(command):
         result = Helpers.execute_shell_command(command)
         return result

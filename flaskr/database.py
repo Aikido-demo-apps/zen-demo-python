@@ -42,18 +42,22 @@ class DatabaseHelper:
         )
 
         # Create table
-        with pool.getconn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS public.pets
-                    (
-                    pet_id integer NOT NULL GENERATED ALWAYS AS IDENTITY (START 1 INCREMENT 1 ),
-                    pet_name character varying(255) NOT NULL,
-                    owner character varying(255) NOT NULL,
-                    CONSTRAINT pet_pkey PRIMARY KEY (pet_id)
-                    )
-                """)
-                conn.commit()
+        conn = pool.getconn()
+        try:
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS public.pets
+                        (
+                        pet_id integer NOT NULL GENERATED ALWAYS AS IDENTITY (START 1 INCREMENT 1 ),
+                        pet_name character varying(255) NOT NULL,
+                        owner character varying(255) NOT NULL,
+                        CONSTRAINT pet_pkey PRIMARY KEY (pet_id)
+                        )
+                    """)
+        finally:
+            # Return the connection to avoid leaks and exhausting PostgreSQL's limit
+            pool.putconn(conn)
 
         return pool
 

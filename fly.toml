@@ -20,3 +20,6 @@ primary_region = 'ams'
   memory = '2048mb'
   cpu_kind = 'performance'
   cpus = 1
+
+[env]
+AIKIDO_FEATURE_SSE = 'true'

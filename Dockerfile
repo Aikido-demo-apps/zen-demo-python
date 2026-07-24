@@ -1,4 +1,4 @@
-FROM python:3.13.2 AS builder
+FROM python:3.14 AS builder
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
@@ -9,7 +9,7 @@ RUN python -m venv .venv
 COPY requirements.txt ./
 RUN .venv/bin/pip install -r requirements.txt
 
-FROM python:3.13.2-slim
+FROM python:3.14-slim
 WORKDIR /app
 RUN apt update && apt install -y gdb procps
 COPY --from=builder /app/.venv .venv/

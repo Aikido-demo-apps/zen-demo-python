@@ -38,7 +38,7 @@ def test_llm():
                     {"role": "assistant", "content": prompt},
                     {"role": "user", "content": message}
                 ],
-                model='claude-3-5-haiku-latest',
+                model='claude-haiku-4-5',
             )
             response = ''.join([content.text for content in anthropic_request.content if content.type == 'text'])
 

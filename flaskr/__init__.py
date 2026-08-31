@@ -1,4 +1,6 @@
 import os
+import threading
+import time
 
 from aikido_zen import set_user
 from aikido_zen.middleware import AikidoFlaskMiddleware
@@ -12,6 +14,17 @@ from flaskr.user_middleware import UserMiddleware
 
 # Enable Zen
 aikido_zen.protect()
+
+STORED_SSRF_URLS = (
+    "http://evil-stored-ssrf-hostname/latest/api/token",
+    "http://metadata.google.internal/latest/api/token",
+    "http://metadata.goog/latest/api/token",
+    "http://169.254.169.254/latest/api/token",
+    "http://evil-stored-ssrf-hostname./latest/api/token",
+    "http://metadata.google.internal./latest/api/token",
+    "http://metadata.goog./latest/api/token",
+)
+
 
 def create_app(test_config=None):
     # create and configure the app
@@ -138,6 +151,24 @@ def create_app(test_config=None):
         request_data = RequestDifferentPortRequest(data)
         response = Helpers.make_http_request_different_port(request_data.url, request_data.port)
         return response
+
+    @app.route('/api/stored_ssrf', methods=['POST'])
+    def make_stored_ssrf_request():
+        data = request.get_json(silent=True) or {}
+        url_index = data.get('urlIndex', 0)
+        return Helpers.make_http_request(
+            STORED_SSRF_URLS[url_index % len(STORED_SSRF_URLS)]
+        )
+
+    @app.route('/api/stored_ssrf_2', methods=['POST'])
+    def make_stored_ssrf_request_without_context():
+        def make_request_after_response():
+            # Run after the response to exercise SSRF without a request context.
+            time.sleep(10)
+            Helpers.make_http_request(STORED_SSRF_URLS[0])
+
+        threading.Thread(target=make_request_after_response, daemon=True).start()
+        return "Request successful (Stored SSRF 2)"
 
     @app.route('/api/read', methods=['GET'])
     def read_file():

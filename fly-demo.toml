@@ -8,6 +8,9 @@ primary_region = 'ams'
 
 [build]
 
+[processes]
+  app = '/app/.venv/bin/gunicorn --bind=[::]:8080 --access-logfile=- --workers=2 wsgi:app'
+
 [http_service]
   internal_port = 8080
   force_https = true

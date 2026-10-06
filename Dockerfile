@@ -15,4 +15,9 @@ RUN apt update && apt install -y gdb procps
 COPY --from=builder /app/.venv .venv/
 COPY . .
 ENV AIKIDO_BLOCK="1"
+
+# Gunicorn's temp-file updates trigger disk journaling and RAM cache growth that can look like a leak.
+# Keeping the files in RAM avoids this overhead.
+ENV GUNICORN_CMD_ARGS="--worker-tmp-dir=/dev/shm"
+
 CMD ["/app/.venv/bin/gunicorn", "--bind=[::]:8080", "--access-logfile=-", "--workers=4", "wsgi:app"]

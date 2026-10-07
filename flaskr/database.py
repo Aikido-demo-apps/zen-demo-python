@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from psycopg2.pool import SimpleConnectionPool
 from contextlib import contextmanager
 from flask import current_app
+from aikido_zen.errors import AikidoException
 
 class DatabaseHelper:
 
@@ -82,6 +83,8 @@ class DatabaseHelper:
                     rows_affected = cur.rowcount
                     conn.commit()
                     print(f"{rows_affected} pets have been removed from the database.")
+        except AikidoException:
+            raise
         except Exception as e:
             print(f"Database error occurred: {e}")
 
@@ -101,6 +104,8 @@ class DatabaseHelper:
                             'name': str(name),
                             'owner': str(owner),
                         })
+        except AikidoException:
+            raise
         except Exception as e:
             print(f"Database error occurred: {e}")
 
@@ -123,6 +128,8 @@ class DatabaseHelper:
                             'owner': str(owner),
                         }
                     return None
+        except AikidoException:
+            raise
         except Exception as e:
             print(f"Database error occurred: {e}")
             return None

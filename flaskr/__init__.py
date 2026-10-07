@@ -3,7 +3,7 @@ import threading
 import time
 
 from aikido_zen import set_user
-from aikido_zen.errors import AikidoException, AikidoRateLimiting
+from aikido_zen.errors import AikidoException
 from aikido_zen.middleware import AikidoFlaskMiddleware
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import DatabaseHelper
@@ -36,12 +36,6 @@ def create_app(test_config=None):
         template_folder="resources",
     )
 
-    @app.errorhandler(AikidoException)
-    def handle_aikido_exception(error):
-        if isinstance(error, AikidoRateLimiting):
-            return "You are rate limited by Zen.", 429
-        return "You are blocked by Zen.", 403
-    
     # Add zen middleware
     app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)
 
@@ -104,17 +98,26 @@ def create_app(test_config=None):
 
     @app.route('/clear', methods=['GET'])
     def clear():
-        DatabaseHelper.clear_all()
+        try:
+            DatabaseHelper.clear_all()
+        except AikidoException as error:
+            return f"Error: {error}", 500
         return "Cleared successfully."
 
     @app.route('/api/pets/', methods=['GET'])
     def get_pets():
-        pets = DatabaseHelper.get_all_pets()
+        try:
+            pets = DatabaseHelper.get_all_pets()
+        except AikidoException as error:
+            return f"Error: {error}", 500
         return jsonify(pets)
 
     @app.route('/api/pets/<id>', methods=['GET'])
     def get_pet_by_id(id):
-        pet = DatabaseHelper.get_pet_by_id(id)
+        try:
+            pet = DatabaseHelper.get_pet_by_id(id)
+        except AikidoException as error:
+            return f"Error: {error}", 500
         if pet:
             return jsonify(pet)
         return jsonify({"error": "Pet not found"}), 404
@@ -123,7 +126,10 @@ def create_app(test_config=None):
     def create_pet():
         data = request.get_json()
         create_request = CreateRequest(data)
-        DatabaseHelper.create_pet_by_name(create_request.name)
+        try:
+            DatabaseHelper.create_pet_by_name(create_request.name)
+        except AikidoException as error:
+            return f"Error: {error}", 500
         return "Success!"
 
     @app.route('/api/execute', methods=['POST'])

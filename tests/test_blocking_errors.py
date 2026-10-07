@@ -2,10 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from aikido_zen.errors import (
-    AikidoException,
-    AikidoNoSQLInjection,
     AikidoPathTraversal,
-    AikidoRateLimiting,
     AikidoShellInjection,
     AikidoSQLInjection,
     AikidoSSRF,
@@ -23,47 +20,144 @@ class BlockingErrorTests(unittest.TestCase):
         self.app.config["PROPAGATE_EXCEPTIONS"] = False
         self.client = self.app.test_client()
 
-    def test_expected_blocks_return_403_without_executing_the_operation(self):
-        for exception_type in (
-            AikidoException,
-            AikidoSQLInjection,
-            AikidoNoSQLInjection,
-            AikidoShellInjection,
-            AikidoPathTraversal,
-            AikidoSSRF,
-        ):
-            with self.subTest(exception_type=exception_type):
-                operation = Mock()
+    def blocking_call(self, error):
+        operation = Mock()
 
-                def reject(func, instance, args, kwargs):
-                    raise exception_type()
+        def reject(func, instance, args, kwargs):
+            raise error
 
-                def create_pet(name):
-                    return before(reject)(operation, None, (name,), {})
+        def call(*args, **kwargs):
+            return before(reject)(operation, None, args, kwargs)
 
-                with patch.object(DatabaseHelper, "create_pet_by_name", create_pet):
-                    with patch.object(self.app, "log_exception") as log_exception:
-                        response = self.client.post(
-                            "/api/create", json={"name": "test"}
-                        )
-                self.assertEqual(response.status_code, 403)
-                self.assertEqual(
-                    response.get_data(as_text=True), "You are blocked by Zen."
-                )
-                operation.assert_not_called()
-                log_exception.assert_not_called()
+        return call, operation
 
-    def test_rate_limit_exception_returns_429(self):
-        with patch.object(
-            DatabaseHelper, "create_pet_by_name", side_effect=AikidoRateLimiting
-        ):
-            with patch.object(self.app, "log_exception") as log_exception:
-                response = self.client.post("/api/create", json={"name": "test"})
-        self.assertEqual(response.status_code, 429)
-        self.assertEqual(
-            response.get_data(as_text=True), "You are rate limited by Zen."
-        )
+    def assert_handled_block(self, response, error, operation, log_exception):
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.get_data(as_text=True), f"Error: {error}")
+        operation.assert_not_called()
         log_exception.assert_not_called()
+
+    def test_sql_blocks_return_500_without_executing_the_query(self):
+        for method, path, data in (
+            ("POST", "/api/create", {"name": "test"}),
+            ("GET", "/api/pets/1", None),
+            ("GET", "/api/pets/", None),
+            ("GET", "/clear", None),
+        ):
+            with self.subTest(path=path):
+                error = AikidoSQLInjection("postgres")
+                call, operation = self.blocking_call(error)
+                with patch.object(DatabaseHelper, "get_db_connection") as connection:
+                    cursor = (
+                        connection.return_value.__enter__.return_value.cursor.return_value.__enter__.return_value
+                    )
+                    cursor.execute.side_effect = call
+                    with patch.object(self.app, "log_exception") as log_exception:
+                        response = self.client.open(path, method=method, json=data)
+                self.assert_handled_block(response, error, operation, log_exception)
+
+    def test_shell_blocks_are_handled_for_both_routes(self):
+        for method, path, data in (
+            ("POST", "/api/execute", {"userCommand": "test"}),
+            ("GET", "/api/execute/test", None),
+        ):
+            with self.subTest(path=path):
+                error = AikidoShellInjection()
+                call, operation = self.blocking_call(error)
+                with patch("flaskr.helpers.subprocess.Popen", side_effect=call):
+                    with patch.object(self.app, "log_exception") as log_exception:
+                        response = self.client.open(path, method=method, json=data)
+                self.assert_handled_block(response, error, operation, log_exception)
+
+    def test_ssrf_helpers_preserve_handled_500_and_error_message(self):
+        for path, data in (
+            ("/api/request", {"url": "http://blocked.example"}),
+            ("/api/request2", {"url": "http://blocked.example"}),
+            (
+                "/api/request_different_port",
+                {"url": "http://blocked.example", "port": 80},
+            ),
+            ("/api/stored_ssrf", {"urlIndex": 0}),
+        ):
+            with self.subTest(path=path):
+                error = AikidoSSRF(
+                    "Zen has blocked an outbound connection to blocked.example"
+                )
+                call, operation = self.blocking_call(error)
+                with patch("flaskr.helpers.requests.get", side_effect=call):
+                    with patch.object(self.app, "log_exception") as log_exception:
+                        response = self.client.post(path, json=data)
+                self.assert_handled_block(response, error, operation, log_exception)
+
+    def test_file_helpers_preserve_handled_500(self):
+        for path in ("/api/read", "/api/read2"):
+            with self.subTest(path=path):
+                error = AikidoPathTraversal()
+                call, operation = self.blocking_call(error)
+                with patch("builtins.open", side_effect=call):
+                    with patch.object(self.app, "log_exception") as log_exception:
+                        response = self.client.get(path, query_string={"path": "test"})
+                self.assert_handled_block(response, error, operation, log_exception)
+
+    def test_background_ssrf_block_remains_handled_after_response(self):
+        call, operation = self.blocking_call(AikidoSSRF())
+        with patch("flaskr.threading.Thread") as thread:
+            response = self.client.post("/api/stored_ssrf_2", json={})
+        self.assertEqual(response.status_code, 200)
+        thread.return_value.start.assert_called_once()
+        with patch("flaskr.time.sleep"):
+            with patch("flaskr.helpers.requests.get", side_effect=call):
+                thread.call_args.kwargs["target"]()
+        operation.assert_not_called()
+
+    def test_file_path_construction_blocks_are_handled(self):
+        for path, target in (("/api/read", "Path"), ("/api/read2", "os")):
+            with self.subTest(path=path):
+                error = AikidoPathTraversal()
+                call, operation = self.blocking_call(error)
+                with patch(f"flaskr.helpers.{target}") as builder:
+                    if target == "Path":
+                        builder.return_value.__truediv__.side_effect = call
+                    else:
+                        builder.path.join.side_effect = call
+                    with patch.object(self.app, "log_exception") as log_exception:
+                        response = self.client.get(path, query_string={"path": "test"})
+                self.assert_handled_block(response, error, operation, log_exception)
+
+    def test_llm_error_remains_a_handled_json_500(self):
+        error = AikidoSSRF()
+        call, operation = self.blocking_call(error)
+        with patch("flaskr.test_llm.OpenAI") as client:
+            client.return_value.chat.completions.create.side_effect = call
+            with patch.object(self.app, "log_exception") as log_exception:
+                response = self.client.post(
+                    "/test_llm", json={"message": "test", "provider": "openai"}
+                )
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.get_json(), {"error": str(error)})
+        operation.assert_not_called()
+        log_exception.assert_not_called()
+
+    def test_policy_block_and_rate_limit_responses_are_unchanged(self):
+        for result, status in (
+            ({"block": True, "type": "blocked", "trigger": "user"}, 403),
+            (
+                {
+                    "block": True,
+                    "type": "ratelimited",
+                    "trigger": "ip",
+                    "ip": "192.0.2.1",
+                },
+                429,
+            ),
+        ):
+            with self.subTest(status=status):
+                with patch(
+                    "aikido_zen.middleware.flask.should_block_request",
+                    return_value=result,
+                ):
+                    response = self.client.get("/test_ratelimiting_1")
+                self.assertEqual(response.status_code, status)
 
     def test_unexpected_exception_remains_a_logged_500(self):
         with patch.object(
@@ -85,4 +179,23 @@ class BlockingErrorTests(unittest.TestCase):
 
     def test_missing_route_remains_404(self):
         response = self.client.get("/missing-file")
+        self.assertEqual(response.status_code, 404)
+
+    def test_missing_pet_remains_404(self):
+        with patch.object(DatabaseHelper, "get_db_connection") as connection:
+            cursor = (
+                connection.return_value.__enter__.return_value.cursor.return_value.__enter__.return_value
+            )
+            cursor.fetchone.return_value = None
+            response = self.client.get("/api/pets/1")
+        self.assertEqual(response.status_code, 404)
+
+    def test_ordinary_database_failure_keeps_existing_response(self):
+        with patch.object(DatabaseHelper, "get_db_connection") as connection:
+            cursor = (
+                connection.return_value.__enter__.return_value.cursor.return_value.__enter__.return_value
+            )
+            cursor.execute.side_effect = RuntimeError("database failure")
+            with patch("builtins.print"):
+                response = self.client.get("/api/pets/1")
         self.assertEqual(response.status_code, 404)

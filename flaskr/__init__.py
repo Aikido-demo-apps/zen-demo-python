@@ -3,6 +3,7 @@ import threading
 import time
 
 from aikido_zen import set_user
+from aikido_zen.errors import AikidoException, AikidoRateLimiting
 from aikido_zen.middleware import AikidoFlaskMiddleware
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import DatabaseHelper
@@ -34,6 +35,12 @@ def create_app(test_config=None):
         static_folder="resources",
         template_folder="resources",
     )
+
+    @app.errorhandler(AikidoException)
+    def handle_aikido_exception(error):
+        if isinstance(error, AikidoRateLimiting):
+            return "You are rate limited by Zen.", 429
+        return "You are blocked by Zen.", 403
     
     # Add zen middleware
     app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)

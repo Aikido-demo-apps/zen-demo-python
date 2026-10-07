@@ -19,8 +19,14 @@ class BlockingErrorTests(unittest.TestCase):
         self.app = create_app()
         self.app.config["PROPAGATE_EXCEPTIONS"] = False
         self.client = self.app.test_client()
+        dispatcher = patch.object(
+            self.app, "handle_user_exception", wraps=self.app.handle_user_exception
+        )
+        self.exception_dispatch = dispatcher.start()
+        self.addCleanup(dispatcher.stop)
 
     def blocking_call(self, error):
+        self.exception_dispatch.reset_mock()
         operation = Mock()
 
         def reject(func, instance, args, kwargs):
@@ -34,8 +40,24 @@ class BlockingErrorTests(unittest.TestCase):
     def assert_handled_block(self, response, error, operation, log_exception):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.get_data(as_text=True), f"Error: {error}")
+        self.exception_dispatch.assert_called_once_with(error)
         operation.assert_not_called()
         log_exception.assert_not_called()
+
+    def test_background_handler_does_not_swallow_unexpected_errors(self):
+        with patch("flaskr.threading.Thread") as thread:
+            response = self.client.post("/api/stored_ssrf_2", json={})
+        self.assertEqual(response.status_code, 200)
+        with patch("flaskr.time.sleep"):
+            with patch(
+                "flaskr.Helpers.make_http_request",
+                side_effect=RuntimeError("unexpected background failure"),
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError, "unexpected background failure"
+                ):
+                    thread.call_args.kwargs["target"]()
+        self.exception_dispatch.assert_not_called()
 
     def test_sql_blocks_return_500_without_executing_the_query(self):
         for method, path, data in (
@@ -109,6 +131,7 @@ class BlockingErrorTests(unittest.TestCase):
             with patch("flaskr.helpers.requests.get", side_effect=call):
                 thread.call_args.kwargs["target"]()
         operation.assert_not_called()
+        self.exception_dispatch.assert_not_called()
 
     def test_file_path_construction_blocks_are_handled(self):
         for path, target in (("/api/read", "Path"), ("/api/read2", "os")):
@@ -124,7 +147,7 @@ class BlockingErrorTests(unittest.TestCase):
                         response = self.client.get(path, query_string={"path": "test"})
                 self.assert_handled_block(response, error, operation, log_exception)
 
-    def test_llm_error_remains_a_handled_json_500(self):
+    def test_llm_zen_block_reaches_shared_handler(self):
         error = AikidoSSRF()
         call, operation = self.blocking_call(error)
         with patch("flaskr.test_llm.OpenAI") as client:
@@ -133,10 +156,18 @@ class BlockingErrorTests(unittest.TestCase):
                 response = self.client.post(
                     "/test_llm", json={"message": "test", "provider": "openai"}
                 )
+        self.assert_handled_block(response, error, operation, log_exception)
+
+    def test_ordinary_llm_error_remains_a_handled_json_500(self):
+        with patch(
+            "flaskr.test_llm.OpenAI", side_effect=RuntimeError("provider failure")
+        ):
+            response = self.client.post(
+                "/test_llm", json={"message": "test", "provider": "openai"}
+            )
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.get_json(), {"error": str(error)})
-        operation.assert_not_called()
-        log_exception.assert_not_called()
+        self.assertEqual(response.get_json(), {"error": "provider failure"})
+        self.exception_dispatch.assert_not_called()
 
     def test_policy_block_and_rate_limit_responses_are_unchanged(self):
         for result, status in (

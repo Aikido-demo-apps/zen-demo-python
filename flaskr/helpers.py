@@ -8,18 +8,15 @@ class Helpers:
     @staticmethod
     def execute_shell_command(command):
         """Execute a shell command and return its output"""
-        try:
-            process = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                universal_newlines=True
-            )
-            stdout, stderr = process.communicate()
-            return stdout if stdout else stderr
-        except AikidoException as error:
-            return f"Error: {error}", 500
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        stdout, stderr = process.communicate()
+        return stdout if stdout else stderr
 
     @staticmethod
     def make_http_request(url_string):
@@ -27,8 +24,8 @@ class Helpers:
         try:
             response = requests.get(url_string, timeout=10)
             return response.text, response.status_code
-        except AikidoException as e:
-            return f"Error: {str(e)}", 500
+        except AikidoException:
+            raise
         except Exception as e:
             if "Failed to resolve" in str(e):
                 return f"Error: {str(e)}", 500
@@ -38,12 +35,12 @@ class Helpers:
     @staticmethod
     def read_file(file_path):
         """Read content from a file"""
+        full_path = Path("flaskr/resources/blogs/") / file_path
         try:
-            full_path = Path("flaskr/resources/blogs/") / file_path
             with open(full_path, 'r') as file:
                 return file.read()
-        except AikidoException as e:
-            return f"Error: {str(e)}", 500
+        except AikidoException:
+            raise
         except Exception as e:
             if "No such file or directory" in str(e) or "Is a directory:" in str(e) or "embedded null byte" in str(e):
                 return f"Error: {str(e)}", 500
@@ -58,8 +55,8 @@ class Helpers:
         try:
             response = requests.get(url_with_port, timeout=10)
             return response.text, response.status_code
-        except AikidoException as e:
-            return f"Error: {str(e)}", 500
+        except AikidoException:
+            raise
         except Exception as e:
             if "Failed to resolve" in str(e):
                 return f"Error: {str(e)}", 500
@@ -68,12 +65,12 @@ class Helpers:
     @staticmethod
     def read_file2(file_path):
         """Read content from a file using os.path.join"""
+        full_path = os.path.join("flaskr/resources/blogs/", file_path)
         try:
-            full_path = os.path.join("flaskr/resources/blogs/", file_path)
             with open(full_path, 'r') as file:
                 return file.read()
-        except AikidoException as e:
-            return f"Error: {str(e)}", 500
+        except AikidoException:
+            raise
         except Exception as e:
             if "No such file or directory" in str(e) or "Is a directory:" in str(e) or "embedded null byte" in str(e):
                 return f"Error: {str(e)}", 500

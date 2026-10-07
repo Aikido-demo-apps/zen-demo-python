@@ -36,6 +36,10 @@ def create_app(test_config=None):
         template_folder="resources",
     )
 
+    @app.errorhandler(AikidoException)
+    def handle_aikido_exception(error):
+        return f"Error: {error}", 500
+
     # Add zen middleware
     app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)
 
@@ -98,26 +102,17 @@ def create_app(test_config=None):
 
     @app.route('/clear', methods=['GET'])
     def clear():
-        try:
-            DatabaseHelper.clear_all()
-        except AikidoException as error:
-            return f"Error: {error}", 500
+        DatabaseHelper.clear_all()
         return "Cleared successfully."
 
     @app.route('/api/pets/', methods=['GET'])
     def get_pets():
-        try:
-            pets = DatabaseHelper.get_all_pets()
-        except AikidoException as error:
-            return f"Error: {error}", 500
+        pets = DatabaseHelper.get_all_pets()
         return jsonify(pets)
 
     @app.route('/api/pets/<id>', methods=['GET'])
     def get_pet_by_id(id):
-        try:
-            pet = DatabaseHelper.get_pet_by_id(id)
-        except AikidoException as error:
-            return f"Error: {error}", 500
+        pet = DatabaseHelper.get_pet_by_id(id)
         if pet:
             return jsonify(pet)
         return jsonify({"error": "Pet not found"}), 404
@@ -126,10 +121,7 @@ def create_app(test_config=None):
     def create_pet():
         data = request.get_json()
         create_request = CreateRequest(data)
-        try:
-            DatabaseHelper.create_pet_by_name(create_request.name)
-        except AikidoException as error:
-            return f"Error: {error}", 500
+        DatabaseHelper.create_pet_by_name(create_request.name)
         return "Success!"
 
     @app.route('/api/execute', methods=['POST'])
@@ -178,7 +170,10 @@ def create_app(test_config=None):
         def make_request_after_response():
             # Run after the response to exercise SSRF without a request context.
             time.sleep(10)
-            Helpers.make_http_request(STORED_SSRF_URLS[0])
+            try:
+                Helpers.make_http_request(STORED_SSRF_URLS[0])
+            except AikidoException:
+                pass
 
         threading.Thread(target=make_request_after_response, daemon=True).start()
         return "Request successful (Stored SSRF 2)"

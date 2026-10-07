@@ -4,6 +4,7 @@ import anthropic
 from flask import request, jsonify
 import mistralai
 from openai import OpenAI
+from aikido_zen.errors import AikidoException
 
 
 def test_llm():
@@ -55,6 +56,8 @@ def test_llm():
                 mistral_request.choices[0].message.content, str) else ''.join(
                 mistral_request.choices[0].message.content)
 
+    except AikidoException:
+        raise
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

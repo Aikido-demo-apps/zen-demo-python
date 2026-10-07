@@ -88,7 +88,7 @@ class DatabaseHelper:
         pets = []
         with DatabaseHelper.get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT * FROM pets")
+                cur.execute("SELECT pet_id, pet_name, owner FROM pets")
                 for row in cur.fetchall():
                     id, name, owner = row
 

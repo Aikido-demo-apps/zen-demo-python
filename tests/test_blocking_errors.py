@@ -45,19 +45,53 @@ class BlockingErrorTests(unittest.TestCase):
         log_exception.assert_not_called()
 
     def test_background_handler_does_not_swallow_unexpected_errors(self):
-        with patch("flaskr.threading.Thread") as thread:
-            response = self.client.post("/api/stored_ssrf_2", json={})
-        self.assertEqual(response.status_code, 200)
-        with patch("flaskr.time.sleep"):
-            with patch(
-                "flaskr.Helpers.make_http_request",
-                side_effect=RuntimeError("unexpected background failure"),
-            ):
-                with self.assertRaisesRegex(
-                    RuntimeError, "unexpected background failure"
-                ):
-                    thread.call_args.kwargs["target"]()
-        self.exception_dispatch.assert_not_called()
+        for target in (
+            "flaskr.Helpers.make_http_request",
+            "flaskr.helpers.requests.get",
+        ):
+            with self.subTest(target=target):
+                with patch("flaskr.threading.Thread") as thread:
+                    response = self.client.post("/api/stored_ssrf_2", json={})
+                self.assertEqual(response.status_code, 200)
+                with patch("flaskr.time.sleep"):
+                    with patch(
+                        target,
+                        side_effect=RuntimeError("unexpected background failure"),
+                    ):
+                        with self.assertRaisesRegex(
+                            RuntimeError, "unexpected background failure"
+                        ):
+                            thread.call_args.kwargs["target"]()
+                self.exception_dispatch.assert_not_called()
+
+    def test_network_failures_use_flask_error_handling(self):
+        for path, data in (
+            ("/api/request", {"url": "http://example.test"}),
+            ("/api/request2", {"url": "http://example.test"}),
+            ("/api/request_different_port", {"url": "http://example.test", "port": 80}),
+            ("/api/stored_ssrf", {"urlIndex": 0}),
+        ):
+            with self.subTest(path=path):
+                self.exception_dispatch.reset_mock()
+                error = OSError("network failure")
+                with patch("flaskr.helpers.requests.get", side_effect=error):
+                    with patch.object(self.app, "log_exception") as log_exception:
+                        response = self.client.post(path, json=data)
+                self.assertEqual(response.status_code, 500)
+                self.exception_dispatch.assert_called_once_with(error)
+                log_exception.assert_called_once()
+
+    def test_file_failures_use_flask_error_handling(self):
+        for path in ("/api/read", "/api/read2"):
+            with self.subTest(path=path):
+                self.exception_dispatch.reset_mock()
+                error = FileNotFoundError("missing file")
+                with patch("builtins.open", side_effect=error):
+                    with patch.object(self.app, "log_exception") as log_exception:
+                        response = self.client.get(path, query_string={"path": "test"})
+                self.assertEqual(response.status_code, 500)
+                self.exception_dispatch.assert_called_once_with(error)
+                log_exception.assert_called_once()
 
     def test_sql_blocks_return_500_without_executing_the_query(self):
         for method, path, data in (
@@ -158,15 +192,24 @@ class BlockingErrorTests(unittest.TestCase):
                 )
         self.assert_handled_block(response, error, operation, log_exception)
 
-    def test_ordinary_llm_error_remains_a_handled_json_500(self):
-        with patch(
-            "flaskr.test_llm.OpenAI", side_effect=RuntimeError("provider failure")
-        ):
-            response = self.client.post(
-                "/test_llm", json={"message": "test", "provider": "openai"}
-            )
+    def test_ordinary_llm_error_uses_flask_error_handling(self):
+        error = RuntimeError("provider failure")
+        with patch("flaskr.test_llm.OpenAI", side_effect=error):
+            with patch.object(self.app, "log_exception") as log_exception:
+                response = self.client.post(
+                    "/test_llm", json={"message": "test", "provider": "openai"}
+                )
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.get_json(), {"error": "provider failure"})
+        self.assertFalse(response.is_json)
+        self.exception_dispatch.assert_called_once_with(error)
+        log_exception.assert_called_once()
+
+    def test_llm_input_validation_remains_400(self):
+        response = self.client.post(
+            "/test_llm", json={"message": "x" * 513, "provider": "openai"}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "Message too long"})
         self.exception_dispatch.assert_not_called()
 
     def test_policy_block_and_rate_limit_responses_are_unchanged(self):
@@ -221,12 +264,36 @@ class BlockingErrorTests(unittest.TestCase):
             response = self.client.get("/api/pets/1")
         self.assertEqual(response.status_code, 404)
 
-    def test_ordinary_database_failure_keeps_existing_response(self):
-        with patch.object(DatabaseHelper, "get_db_connection") as connection:
-            cursor = (
-                connection.return_value.__enter__.return_value.cursor.return_value.__enter__.return_value
-            )
-            cursor.execute.side_effect = RuntimeError("database failure")
-            with patch("builtins.print"):
-                response = self.client.get("/api/pets/1")
-        self.assertEqual(response.status_code, 404)
+    def test_database_failures_use_flask_error_handling(self):
+        for method, path, data in (
+            ("POST", "/api/create", {"name": "test"}),
+            ("GET", "/api/pets/1", None),
+            ("GET", "/api/pets/", None),
+            ("GET", "/clear", None),
+        ):
+            with self.subTest(path=path):
+                self.exception_dispatch.reset_mock()
+                error = RuntimeError("database failure")
+                with patch.object(DatabaseHelper, "get_db_connection") as connection:
+                    cursor = (
+                        connection.return_value.__enter__.return_value.cursor.return_value.__enter__.return_value
+                    )
+                    cursor.execute.side_effect = error
+                    with patch.object(self.app, "log_exception") as log_exception:
+                        response = self.client.open(path, method=method, json=data)
+                self.assertEqual(response.status_code, 500)
+                self.exception_dispatch.assert_called_once_with(error)
+                log_exception.assert_called_once()
+
+    def test_failed_queries_return_connections_to_the_pool(self):
+        for error in (RuntimeError("database failure"), AikidoSQLInjection("postgres")):
+            with self.subTest(error_type=type(error)):
+                with patch.object(DatabaseHelper, "_get_db_pool") as get_pool:
+                    pool = get_pool.return_value
+                    connection = pool.getconn.return_value
+                    cursor = connection.cursor.return_value.__enter__.return_value
+                    cursor.execute.side_effect = error
+                    with patch.object(self.app, "log_exception"):
+                        response = self.client.get("/api/pets/1")
+                self.assertEqual(response.status_code, 500)
+                pool.putconn.assert_called_once_with(connection)

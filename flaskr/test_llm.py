@@ -4,7 +4,6 @@ import anthropic
 from flask import request, jsonify
 import mistralai
 from openai import OpenAI
-from aikido_zen.errors import AikidoException
 
 
 def test_llm():
@@ -19,46 +18,40 @@ def test_llm():
 
     response = 'Unknown provider'
 
-    try:
-        if provider == 'openai':
-            openai_client = OpenAI()
-            openai_request = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": message}
-                ]
-            )
-            response = openai_request.choices[0].message.content
+    if provider == 'openai':
+        openai_client = OpenAI()
+        openai_request = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": message}
+            ]
+        )
+        response = openai_request.choices[0].message.content
 
-        elif provider == 'anthropic':
-            anthropic_client = anthropic.Anthropic()
-            anthropic_request = anthropic_client.messages.create(
-                max_tokens=512,
-                messages=[
-                    {"role": "assistant", "content": prompt},
-                    {"role": "user", "content": message}
-                ],
-                model='claude-haiku-4-5',
-            )
-            response = ''.join([content.text for content in anthropic_request.content if content.type == 'text'])
+    elif provider == 'anthropic':
+        anthropic_client = anthropic.Anthropic()
+        anthropic_request = anthropic_client.messages.create(
+            max_tokens=512,
+            messages=[
+                {"role": "assistant", "content": prompt},
+                {"role": "user", "content": message}
+            ],
+            model='claude-haiku-4-5',
+        )
+        response = ''.join([content.text for content in anthropic_request.content if content.type == 'text'])
 
-        elif provider == 'mistral':
-            mistral_client = mistralai.Mistral(api_key=os.getenv('MISTRAL_API_KEY'))
-            mistral_request = mistral_client.chat.complete(
-                model='mistral-tiny',
-                messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": message}
-                ],
-            )
-            response = mistral_request.choices[0].message.content if isinstance(
-                mistral_request.choices[0].message.content, str) else ''.join(
-                mistral_request.choices[0].message.content)
-
-    except AikidoException:
-        raise
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    elif provider == 'mistral':
+        mistral_client = mistralai.Mistral(api_key=os.getenv('MISTRAL_API_KEY'))
+        mistral_request = mistral_client.chat.complete(
+            model='mistral-tiny',
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": message}
+            ],
+        )
+        response = mistral_request.choices[0].message.content if isinstance(
+            mistral_request.choices[0].message.content, str) else ''.join(
+            mistral_request.choices[0].message.content)
 
     return response

@@ -173,6 +173,7 @@ def create_app(test_config=None):
             try:
                 Helpers.make_http_request(STORED_SSRF_URLS[0])
             except AikidoException:
+                # Zen handles attack reporting; avoid an unhandled traceback for an expected block.
                 pass
 
         threading.Thread(target=make_request_after_response, daemon=True).start()

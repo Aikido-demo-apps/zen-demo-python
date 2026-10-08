@@ -1,3 +1,8 @@
+import aikido_zen
+
+# Start Zen before app imports so its background process does not inherit their memory.
+aikido_zen.protect()
+
 import os
 import threading
 import time
@@ -8,13 +13,9 @@ from aikido_zen.middleware import AikidoFlaskMiddleware
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from flaskr.database import DatabaseHelper
 from flaskr.helpers import Helpers
-import aikido_zen
 
 from flaskr.test_llm import test_llm
 from flaskr.user_middleware import UserMiddleware
-
-# Enable Zen
-aikido_zen.protect()
 
 STORED_SSRF_URLS = (
     "http://evil-stored-ssrf-hostname/latest/api/token",

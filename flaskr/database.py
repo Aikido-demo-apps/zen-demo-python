@@ -75,57 +75,47 @@ class DatabaseHelper:
     @staticmethod
     def clear_all():
         """Clear all pets from the database"""
-        try:
-            with DatabaseHelper.get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("DELETE FROM pets")
-                    rows_affected = cur.rowcount
-                    conn.commit()
-                    print(f"{rows_affected} pets have been removed from the database.")
-        except Exception as e:
-            print(f"Database error occurred: {e}")
+        with DatabaseHelper.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM pets")
+                rows_affected = cur.rowcount
+                conn.commit()
+                print(f"{rows_affected} pets have been removed from the database.")
 
     @staticmethod
     def get_all_pets():
         """Get all pets from the database"""
         pets = []
-        try:
-            with DatabaseHelper.get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT * FROM pets")
-                    for row in cur.fetchall():
-                        id, name, owner = row
+        with DatabaseHelper.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT pet_id, pet_name, owner FROM pets")
+                for row in cur.fetchall():
+                    id, name, owner = row
 
-                        pets.append({
-                            'pet_id': str(id),
-                            'name': str(name),
-                            'owner': str(owner),
-                        })
-        except Exception as e:
-            print(f"Database error occurred: {e}")
+                    pets.append({
+                        'pet_id': str(id),
+                        'name': str(name),
+                        'owner': str(owner),
+                    })
 
         return pets
 
     @staticmethod
     def get_pet_by_id(pet_id):
         """Get a specific pet by ID"""
-        try:
-            with DatabaseHelper.get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    query = f"SELECT * FROM pets WHERE pet_id = '{pet_id}'"
-                    cur.execute(query)
-                    row = cur.fetchone()
-                    if row:
-                        id, name, owner = row
-                        return {
-                            'pet_id': str(id),
-                            'name': str(name),
-                            'owner': str(owner),
-                        }
-                    return None
-        except Exception as e:
-            print(f"Database error occurred: {e}")
-            return None
+        with DatabaseHelper.get_db_connection() as conn:
+            with conn.cursor() as cur:
+                query = f"SELECT * FROM pets WHERE pet_id = '{pet_id}'"
+                cur.execute(query)
+                row = cur.fetchone()
+                if row:
+                    id, name, owner = row
+                    return {
+                        'pet_id': str(id),
+                        'name': str(name),
+                        'owner': str(owner),
+                    }
+                return None
 
     @staticmethod
     def create_pet_by_name(pet_name):

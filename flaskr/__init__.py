@@ -40,6 +40,11 @@ def create_app(test_config=None):
     def handle_aikido_exception(error):
         return f"Error: {error}", 500
 
+    # Flask sends every other unhandled error here as a 500; return 400 so that only Zen blocks return 500.
+    @app.errorhandler(500)
+    def handle_unexpected_exception(error):
+        return f"Error: {error.original_exception}", 400
+
     # Add zen middleware
     app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)
 
@@ -170,11 +175,7 @@ def create_app(test_config=None):
         def make_request_after_response():
             # Run after the response to exercise SSRF without a request context.
             time.sleep(10)
-            try:
-                Helpers.make_http_request(STORED_SSRF_URLS[0])
-            except AikidoException:
-                # Zen handles attack reporting; avoid an unhandled traceback for an expected block.
-                pass
+            Helpers.make_http_request(STORED_SSRF_URLS[0])
 
         threading.Thread(target=make_request_after_response, daemon=True).start()
         return "Request successful (Stored SSRF 2)"

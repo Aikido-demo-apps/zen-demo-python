@@ -77,7 +77,7 @@ class BlockingErrorTests(unittest.TestCase):
                 with patch("flaskr.helpers.requests.get", side_effect=error):
                     with patch.object(self.app, "log_exception") as log_exception:
                         response = self.client.post(path, json=data)
-                self.assertEqual(response.status_code, 500)
+                self.assertEqual(response.status_code, 400)
                 self.exception_dispatch.assert_called_once_with(error)
                 log_exception.assert_called_once()
 
@@ -89,7 +89,7 @@ class BlockingErrorTests(unittest.TestCase):
                 with patch("builtins.open", side_effect=error):
                     with patch.object(self.app, "log_exception") as log_exception:
                         response = self.client.get(path, query_string={"path": "test"})
-                self.assertEqual(response.status_code, 500)
+                self.assertEqual(response.status_code, 400)
                 self.exception_dispatch.assert_called_once_with(error)
                 log_exception.assert_called_once()
 
@@ -155,7 +155,7 @@ class BlockingErrorTests(unittest.TestCase):
                         response = self.client.get(path, query_string={"path": "test"})
                 self.assert_handled_block(response, error, operation, log_exception)
 
-    def test_background_ssrf_block_remains_handled_after_response(self):
+    def test_background_ssrf_block_is_raised_after_response(self):
         call, operation = self.blocking_call(AikidoSSRF())
         with patch("flaskr.threading.Thread") as thread:
             response = self.client.post("/api/stored_ssrf_2", json={})
@@ -163,7 +163,8 @@ class BlockingErrorTests(unittest.TestCase):
         thread.return_value.start.assert_called_once()
         with patch("flaskr.time.sleep"):
             with patch("flaskr.helpers.requests.get", side_effect=call):
-                thread.call_args.kwargs["target"]()
+                with self.assertRaises(AikidoSSRF):
+                    thread.call_args.kwargs["target"]()
         operation.assert_not_called()
         self.exception_dispatch.assert_not_called()
 
@@ -199,7 +200,7 @@ class BlockingErrorTests(unittest.TestCase):
                 response = self.client.post(
                     "/test_llm", json={"message": "test", "provider": "openai"}
                 )
-        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.status_code, 400)
         self.assertFalse(response.is_json)
         self.exception_dispatch.assert_called_once_with(error)
         log_exception.assert_called_once()
@@ -233,13 +234,13 @@ class BlockingErrorTests(unittest.TestCase):
                     response = self.client.get("/test_ratelimiting_1")
                 self.assertEqual(response.status_code, status)
 
-    def test_unexpected_exception_remains_a_logged_500(self):
+    def test_unexpected_exception_is_a_logged_400(self):
         with patch.object(
             DatabaseHelper, "create_pet_by_name", side_effect=RuntimeError("failure")
         ):
             with patch.object(self.app, "log_exception") as log_exception:
                 response = self.client.post("/api/create", json={"name": "test"})
-        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.status_code, 400)
         log_exception.assert_called_once()
 
     def test_successful_request_is_unchanged(self):
@@ -281,12 +282,15 @@ class BlockingErrorTests(unittest.TestCase):
                     cursor.execute.side_effect = error
                     with patch.object(self.app, "log_exception") as log_exception:
                         response = self.client.open(path, method=method, json=data)
-                self.assertEqual(response.status_code, 500)
+                self.assertEqual(response.status_code, 400)
                 self.exception_dispatch.assert_called_once_with(error)
                 log_exception.assert_called_once()
 
     def test_failed_queries_return_connections_to_the_pool(self):
-        for error in (RuntimeError("database failure"), AikidoSQLInjection("postgres")):
+        for error, status in (
+            (RuntimeError("database failure"), 400),
+            (AikidoSQLInjection("postgres"), 500),
+        ):
             with self.subTest(error_type=type(error)):
                 with patch.object(DatabaseHelper, "_get_db_pool") as get_pool:
                     pool = get_pool.return_value
@@ -295,5 +299,5 @@ class BlockingErrorTests(unittest.TestCase):
                     cursor.execute.side_effect = error
                     with patch.object(self.app, "log_exception"):
                         response = self.client.get("/api/pets/1")
-                self.assertEqual(response.status_code, 500)
+                self.assertEqual(response.status_code, status)
                 pool.putconn.assert_called_once_with(connection)

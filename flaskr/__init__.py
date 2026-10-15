@@ -89,6 +89,19 @@ def create_app(test_config=None):
     def test_user_blocking():
         return "Hello User with id: %s" % (request.headers.get('user'))
 
+    @app.route('/api/custom-event', methods=['GET'])
+    def custom_event():
+        try:
+            count = int(request.args.get('count', '1'))
+        except ValueError:
+            return "count must be an integer between 1 and 100", 400
+        if not 1 <= count <= 100:
+            return "count must be an integer between 1 and 100", 400
+
+        for _ in range(count):
+            aikido_zen.track('user.login_failed')
+        return "Events tracked"
+
     class CreateRequest:
         def __init__(self, data):
             self.name = data.get('name')

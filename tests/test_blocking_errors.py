@@ -12,10 +12,13 @@ from aikido_zen.sinks import before
 with patch("aikido_zen.protect"):
     from flaskr import create_app
     from flaskr.database import DatabaseHelper
+    from flaskr.test_llm import get_llm_client
 
 
 class BlockingErrorTests(unittest.TestCase):
     def setUp(self):
+        get_llm_client.cache_clear()
+        self.addCleanup(get_llm_client.cache_clear)
         self.app = create_app()
         self.app.config["PROPAGATE_EXCEPTIONS"] = False
         self.client = self.app.test_client()

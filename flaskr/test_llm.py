@@ -1,9 +1,22 @@
 import os
+from functools import cache
 
 import anthropic
 from flask import request, jsonify
-import mistralai
 from openai import OpenAI
+
+
+@cache
+def get_llm_client(provider):
+    if provider == 'openai':
+        return OpenAI()
+    if provider == 'anthropic':
+        return anthropic.Anthropic()
+    if provider == 'mistral':
+        from mistralai.client import Mistral
+
+        return Mistral(api_key=os.getenv('MISTRAL_API_KEY'))
+    raise ValueError(f'Unknown provider: {provider}')
 
 
 def test_llm():
@@ -19,7 +32,7 @@ def test_llm():
     response = 'Unknown provider'
 
     if provider == 'openai':
-        openai_client = OpenAI()
+        openai_client = get_llm_client('openai')
         openai_request = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -30,7 +43,7 @@ def test_llm():
         response = openai_request.choices[0].message.content
 
     elif provider == 'anthropic':
-        anthropic_client = anthropic.Anthropic()
+        anthropic_client = get_llm_client('anthropic')
         anthropic_request = anthropic_client.messages.create(
             max_tokens=512,
             messages=[
@@ -42,7 +55,7 @@ def test_llm():
         response = ''.join([content.text for content in anthropic_request.content if content.type == 'text'])
 
     elif provider == 'mistral':
-        mistral_client = mistralai.Mistral(api_key=os.getenv('MISTRAL_API_KEY'))
+        mistral_client = get_llm_client('mistral')
         mistral_request = mistral_client.chat.complete(
             model='mistral-tiny',
             messages=[

@@ -5,5 +5,5 @@ gunicorn
 openai
 anthropic
 mistralai
-aikido_zen==1.2.38b1
+aikido_zen==1.2.38b2
 memray

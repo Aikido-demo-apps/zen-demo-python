@@ -4,6 +4,6 @@ requests
 gunicorn 
 openai
 anthropic
-mistralai
+mistralai 
 aikido_zen==1.2.29 
 memray

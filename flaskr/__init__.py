@@ -42,10 +42,14 @@ def create_app(test_config=None):
     def handle_aikido_exception(error):
         return f"Error: {error}", 500
 
-    # Use 400 for non-Zen exceptions so QA can distinguish them from Zen blocks.
+    # Flask's default handling can retain requests; convert HTTP errors to responses.
+    # QA expects 500 for Zen blocks and 400 for other server errors.
     @app.errorhandler(HTTPException)
     def handle_http_exception(error):
-        return f"Error: {error}", 400
+        response = error.get_response(request.environ)
+        if response.status_code >= 500:
+            response.status_code = 400
+        return response
 
     # Add zen middleware
     app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)

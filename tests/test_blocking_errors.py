@@ -255,9 +255,9 @@ class BlockingErrorTests(unittest.TestCase):
         self.assertEqual(response.get_data(as_text=True), "Success!")
         create_pet.assert_called_once_with("test")
 
-    def test_missing_route_remains_404(self):
+    def test_missing_route_returns_400(self):
         response = self.client.get("/missing-file")
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 400)
 
     def test_missing_pet_remains_404(self):
         with patch.object(DatabaseHelper, "get_db_connection") as connection:

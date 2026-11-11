@@ -1,7 +1,7 @@
 Flask
 psycopg2-binary
 requests
-gunicorn
+gunicorn 
 openai
 anthropic
 mistralai

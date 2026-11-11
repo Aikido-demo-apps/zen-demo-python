@@ -208,6 +208,8 @@ class BlockingErrorTests(unittest.TestCase):
                 )
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.is_json)
+        self.assertEqual(response.get_data(as_text=True), "Error: provider failure")
+        self.assertEqual(response.mimetype, "text/html")
         self.exception_dispatch.assert_called_once_with(error)
         log_exception.assert_called_once()
 

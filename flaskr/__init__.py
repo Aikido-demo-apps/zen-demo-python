@@ -46,10 +46,11 @@ def create_app(test_config=None):
     # QA expects 500 for Zen blocks and 400 for other server errors.
     @app.errorhandler(HTTPException)
     def handle_http_exception(error):
-        response = error.get_response(request.environ)
-        if response.status_code >= 500:
-            response.status_code = 400
-        return response
+        if original_exception := getattr(error, "original_exception", None):
+            error.description = str(original_exception)
+        if error.code >= 500:
+            error.code = 400
+        return f"Error: {error.description}", error.code, error.get_headers(request.environ)
 
     # Add zen middleware
     app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)

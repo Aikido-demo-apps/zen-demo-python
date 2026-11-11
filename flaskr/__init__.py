@@ -11,6 +11,7 @@ from aikido_zen import set_user
 from aikido_zen.errors import AikidoException
 from aikido_zen.middleware import AikidoFlaskMiddleware
 from flask import Flask, render_template, send_from_directory, request, jsonify
+from werkzeug.exceptions import HTTPException
 from flaskr.database import DatabaseHelper
 from flaskr.helpers import Helpers
 
@@ -41,10 +42,14 @@ def create_app(test_config=None):
     def handle_aikido_exception(error):
         return f"Error: {error}", 500
 
-    # Flask sends every other unhandled error here as a 500; return 400 so that only Zen blocks return 500.
-    @app.errorhandler(500)
-    def handle_unexpected_exception(error):
-        return f"Error: {error.original_exception}", 400
+    # Flask's default handling can retain requests; convert HTTP errors to responses.
+    # QA expects 500 for Zen blocks and 400 for other server errors.
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(error):
+        response = error.get_response(request.environ)
+        if response.status_code >= 500:
+            response.status_code = 400
+        return response
 
     # Add zen middleware
     app.wsgi_app = AikidoFlaskMiddleware(app.wsgi_app)

@@ -1,5 +1,8 @@
 import unittest
+from weakref import ref
 from unittest.mock import Mock, patch
+
+from flask import abort, request
 
 from aikido_zen.errors import (
     AikidoPathTraversal,
@@ -257,6 +260,23 @@ class BlockingErrorTests(unittest.TestCase):
 
     def test_missing_route_returns_400(self):
         response = self.client.get("/missing-file")
+        self.assertEqual(response.status_code, 400)
+
+    def test_http_error_releases_request(self):
+        app = create_app()
+        requests = []
+
+        @app.before_request
+        def record_request():
+            requests.append(ref(request._get_current_object()))
+
+        @app.get("/http-error")
+        def view_error():
+            abort(404)
+
+        response = app.test_client().get("/http-error")
+        response.close()
+        self.assertIsNone(requests[0]())
         self.assertEqual(response.status_code, 400)
 
     def test_missing_pet_remains_404(self):

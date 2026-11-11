@@ -1,6 +1,6 @@
 Flask
 psycopg2-binary
-requests
+requests 
 gunicorn 
 openai
 anthropic

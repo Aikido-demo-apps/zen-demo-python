@@ -3,7 +3,7 @@ psycopg2-binary
 requests 
 gunicorn 
 openai
-anthropic
+anthropic 
 mistralai 
 aikido_zen==1.2.29 
 memray

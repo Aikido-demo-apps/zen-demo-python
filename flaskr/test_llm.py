@@ -34,7 +34,8 @@ def test_llm():
     if provider == 'openai':
         openai_client = get_llm_client('openai')
         openai_request = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-6-luna",
+            reasoning_effort="none",
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": message}
